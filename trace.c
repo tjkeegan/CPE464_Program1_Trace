@@ -195,7 +195,7 @@ void ip(const unsigned char *data) {
         "\t\tProtocol: %s\n"
         "\t\tChecksum: %s (0x%04x)\n"
         "\t\tSender IP: %s\n"
-        "\t\tDest IP: %s\n\n",
+        "\t\tDest IP: %s\n",
         total_len, header_len, ttl, protocol_str, cksum_str, cksum, sender_ip_str, dest_ip_str
     );
 
@@ -262,7 +262,7 @@ void tcp(unsigned char *data) {
         memcpy(src_port_str, "HTTPS", strlen("HTTPS") + 1);
     }
     else {
-        snprintf(src_port_str, sizeof(src_port), "%u", src_port);
+        snprintf(src_port_str, sizeof(src_port_str), "%u", src_port);
     }
     if (dest_port == 80) {
         memcpy(dest_port_str, "HTTP", strlen("HTTP") + 1);
@@ -271,7 +271,7 @@ void tcp(unsigned char *data) {
         memcpy(dest_port_str, "HTTPS", strlen("HTTPS") + 1);
     }
     else {
-        snprintf(dest_port_str, sizeof(dest_port), "%u", dest_port);
+        snprintf(dest_port_str, sizeof(dest_port_str), "%u", dest_port);
     }
 
     flags & 0x2 ? memcpy(syn_flag_str, "Yes", strlen("Yes") + 1) : memcpy(syn_flag_str, "No", strlen("No") + 1);
@@ -289,7 +289,7 @@ void tcp(unsigned char *data) {
         "\n\tTCP Header\n"
         "\t\tSegment Length: %d\n"
         "\t\tSource Port:  %s\n"
-        "\t\tDest Port:  %d\n"
+        "\t\tDest Port:  %s\n"
         "\t\tSequence Number: %u\n"
         "\t\tACK Number: %u\n"
         "\t\tSYN Flag: %s\n"
@@ -297,7 +297,7 @@ void tcp(unsigned char *data) {
         "\t\tFIN Flag: %s\n"
         "\t\tACK Flag: %s\n"
         "\t\tWindow Size: %d\n"
-        "\t\tChecksum: %s (0x%04x)\n\n",
-        seg_len, src_port_str, dest_port, seq_num, ack_num, syn_flag_str, rst_flag_str, fin_flag_str, ack_flag_str, win_size, cksum_str, cksum
+        "\t\tChecksum: %s (0x%04x)\n",
+        seg_len, src_port_str, dest_port_str, seq_num, ack_num, syn_flag_str, rst_flag_str, fin_flag_str, ack_flag_str, win_size, cksum_str, cksum
     );
 }
