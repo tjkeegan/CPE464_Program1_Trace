@@ -169,14 +169,6 @@ void ip(const unsigned char *data) {
     }
     else if (protocol == TCP_TYPE) {
         memcpy(protocol_str, "TCP", strlen("TCP") + 1);
-        
-        char pseudo_hdr[total_len];
-        memcpy(pseudo_hdr, sender_ip, IP_LENGTH);
-        memcpy(pseudo_hdr + IP_LENGTH, dest_ip, IP_LENGTH);
-        pseudo_hdr[8] = 0;
-        pseudo_hdr[9] = protocol;
-        pseudo_hdr[10] = htons(total_len - header_len); 
-        memcpy(pseudo_hdr + 10, data + header_len, total_len - header_len);
     }
     else if (protocol == UDP_TYPE) {
         memcpy(protocol_str, "UDP", strlen("UDP") + 1);
@@ -211,15 +203,24 @@ void ip(const unsigned char *data) {
         //icmp(data + header_len);
     }
     else if (protocol == TCP_TYPE) {
-        memcpy(data + header_len - 12, pseudo_hdr, 12);
-        tcp(data + header_len - 12);
+        uint16_t tcp_len = total_len - header_len;
+        unsigned char pseudo_hdr[PSEUDO_HDR_LENGTH + tcp_len];
+        tcp_len = htons(tcp_len); // convert from host byte order to network byte order
+        memcpy(pseudo_hdr, sender_ip, IP_LENGTH);
+        memcpy(pseudo_hdr + IP_LENGTH, dest_ip, IP_LENGTH);
+        pseudo_hdr[8] = 0;
+        pseudo_hdr[9] = protocol;
+        memcpy(pseudo_hdr + 10, &tcp_len, sizeof(uint16_t));
+        memcpy(pseudo_hdr + 12, data + header_len, total_len - header_len);
+
+        tcp(pseudo_hdr);
     }
     else if (protocol == UDP_TYPE) {
         //udp(data + header_len);
     }
 }
 
-void tcp(const unsigned char *data) {
+void tcp(unsigned char *data) {
     // parse TCP header
     uint16_t seg_len;
     uint16_t src_port;
@@ -230,6 +231,8 @@ void tcp(const unsigned char *data) {
     uint16_t win_size;
     uint16_t cksum;
 
+    char src_port_str[16];
+    char dest_port_str[16];
     char syn_flag_str[strlen("Yes") + 1];
     char rst_flag_str[strlen("Yes") + 1];
     char fin_flag_str[strlen("Yes") + 1];
@@ -252,12 +255,31 @@ void tcp(const unsigned char *data) {
     memcpy(&cksum, data + PSEUDO_HDR_LENGTH + 16, sizeof(uint16_t));
     cksum = ntohs(cksum);
 
+    if (src_port == 80) {
+        memcpy(src_port_str, "HTTP", strlen("HTTP") + 1);
+    }
+    else if (src_port == 443) {
+        memcpy(src_port_str, "HTTPS", strlen("HTTPS") + 1);
+    }
+    else {
+        snprintf(src_port_str, sizeof(src_port), "%u", src_port);
+    }
+    if (dest_port == 80) {
+        memcpy(dest_port_str, "HTTP", strlen("HTTP") + 1);
+    }
+    else if (dest_port == 443) {
+        memcpy(dest_port_str, "HTTPS", strlen("HTTPS") + 1);
+    }
+    else {
+        snprintf(dest_port_str, sizeof(dest_port), "%u", dest_port);
+    }
+
     flags & 0x2 ? memcpy(syn_flag_str, "Yes", strlen("Yes") + 1) : memcpy(syn_flag_str, "No", strlen("No") + 1);
     flags & 0x4 ? memcpy(rst_flag_str, "Yes", strlen("Yes") + 1) : memcpy(rst_flag_str, "No", strlen("No") + 1);
     flags & 0x1 ? memcpy(fin_flag_str, "Yes", strlen("Yes") + 1) : memcpy(fin_flag_str, "No", strlen("No") + 1);
     flags & 0x10 ? memcpy(ack_flag_str, "Yes", strlen("Yes") + 1) : memcpy(ack_flag_str, "No", strlen("No") + 1);
 
-    if (in_cksum((unsigned short *)data, seg_len) == 0) {
+    if (in_cksum((unsigned short *)data, PSEUDO_HDR_LENGTH + seg_len) == 0) {
         memcpy(cksum_str, "Correct", strlen("Correct") + 1);
     } else {
         memcpy(cksum_str, "Incorrect", strlen("Incorrect") + 1);
@@ -265,9 +287,9 @@ void tcp(const unsigned char *data) {
 
     printf(
         "\n\tTCP Header\n"
-        "\t\tSegment Len (bytes): %d\n"
-        "\t\tSource Port: %d\n"
-        "\t\tDest Port: %d\n"
+        "\t\tSegment Length: %d\n"
+        "\t\tSource Port:  %s\n"
+        "\t\tDest Port:  %d\n"
         "\t\tSequence Number: %u\n"
         "\t\tACK Number: %u\n"
         "\t\tSYN Flag: %s\n"
@@ -276,6 +298,6 @@ void tcp(const unsigned char *data) {
         "\t\tACK Flag: %s\n"
         "\t\tWindow Size: %d\n"
         "\t\tChecksum: %s (0x%04x)\n\n",
-        seg_len, src_port, dest_port, seq_num, ack_num, syn_flag_str, rst_flag_str, fin_flag_str, ack_flag_str, win_size, cksum_str, cksum
+        seg_len, src_port_str, dest_port, seq_num, ack_num, syn_flag_str, rst_flag_str, fin_flag_str, ack_flag_str, win_size, cksum_str, cksum
     );
 }
