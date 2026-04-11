@@ -148,8 +148,8 @@ void ip(const unsigned char *data) {
     uint8_t sender_ip[IP_LENGTH];
     uint8_t dest_ip[IP_LENGTH];
 
-    char protocol_str[8]; // enough to hold "Unknown" + null terminator
-    char cksum_str[10]; // enough to hold "Incorrect" + null terminator
+    char protocol_str[strlen("Unknown") + 1];
+    char cksum_str[strlen("Incorrect") + 1];
     char sender_ip_str[IP_STR_LENGTH];
     char dest_ip_str[IP_STR_LENGTH];
 
@@ -164,23 +164,31 @@ void ip(const unsigned char *data) {
     memcpy(sender_ip, data + 12, IP_LENGTH);
     memcpy(dest_ip, data + 16, IP_LENGTH);
 
-    if (protocol == 1) {
-        memcpy(protocol_str, "ICMP", 5);
+    if (protocol == ICMP_TYPE) {
+        memcpy(protocol_str, "ICMP", strlen("ICMP") + 1);
     }
-    else if (protocol == 6) {
-        memcpy(protocol_str, "TCP", 4);
+    else if (protocol == TCP_TYPE) {
+        memcpy(protocol_str, "TCP", strlen("TCP") + 1);
+        
+        char pseudo_hdr[total_len];
+        memcpy(pseudo_hdr, sender_ip, IP_LENGTH);
+        memcpy(pseudo_hdr + IP_LENGTH, dest_ip, IP_LENGTH);
+        pseudo_hdr[8] = 0;
+        pseudo_hdr[9] = protocol;
+        pseudo_hdr[10] = htons(total_len - header_len); 
+        memcpy(pseudo_hdr + 10, data + header_len, total_len - header_len);
     }
-    else if (protocol == 17) {
-        memcpy(protocol_str, "UDP", 4);
+    else if (protocol == UDP_TYPE) {
+        memcpy(protocol_str, "UDP", strlen("UDP") + 1);
     }
     else {
-        memcpy(protocol_str, "Unknown", 8);
+        memcpy(protocol_str, "Unknown", strlen("Unknown") + 1);
     }
 
     if (in_cksum((unsigned short *)data, header_len) == 0) {
-        memcpy(cksum_str, "Correct", 8);
+        memcpy(cksum_str, "Correct", strlen("Correct") + 1);
     } else {
-        memcpy(cksum_str, "Incorrect", 10);
+        memcpy(cksum_str, "Incorrect", strlen("Incorrect") + 1);
     }
  
     inet_ntop(AF_INET, sender_ip, sender_ip_str, IP_STR_LENGTH);
@@ -197,5 +205,77 @@ void ip(const unsigned char *data) {
         "\t\tSender IP: %s\n"
         "\t\tDest IP: %s\n\n",
         total_len, header_len, ttl, protocol_str, cksum_str, cksum, sender_ip_str, dest_ip_str
+    );
+
+    if (protocol == ICMP_TYPE) {
+        //icmp(data + header_len);
+    }
+    else if (protocol == TCP_TYPE) {
+        memcpy(data + header_len - 12, pseudo_hdr, 12);
+        tcp(data + header_len - 12);
+    }
+    else if (protocol == UDP_TYPE) {
+        //udp(data + header_len);
+    }
+}
+
+void tcp(const unsigned char *data) {
+    // parse TCP header
+    uint16_t seg_len;
+    uint16_t src_port;
+    uint16_t dest_port;
+    uint32_t seq_num;
+    uint32_t ack_num;
+    uint8_t flags;
+    uint16_t win_size;
+    uint16_t cksum;
+
+    char syn_flag_str[strlen("Yes") + 1];
+    char rst_flag_str[strlen("Yes") + 1];
+    char fin_flag_str[strlen("Yes") + 1];
+    char ack_flag_str[strlen("Yes") + 1];
+    char cksum_str[strlen("Incorrect") + 1];
+
+    memcpy(&seg_len, data + 10, sizeof(uint16_t));
+    seg_len = ntohs(seg_len); 
+    memcpy(&src_port, data + PSEUDO_HDR_LENGTH, sizeof(uint16_t));
+    src_port = ntohs(src_port);
+    memcpy(&dest_port, data + PSEUDO_HDR_LENGTH + 2, sizeof(uint16_t));
+    dest_port = ntohs(dest_port);
+    memcpy(&seq_num, data + PSEUDO_HDR_LENGTH + 4, sizeof(uint32_t));
+    seq_num = ntohl(seq_num);
+    memcpy(&ack_num, data + PSEUDO_HDR_LENGTH + 8, sizeof(uint32_t));
+    ack_num = ntohl(ack_num);
+    memcpy(&flags, data + PSEUDO_HDR_LENGTH + 13, sizeof(uint8_t));
+    memcpy(&win_size, data + PSEUDO_HDR_LENGTH + 14, sizeof(uint16_t));
+    win_size = ntohs(win_size);
+    memcpy(&cksum, data + PSEUDO_HDR_LENGTH + 16, sizeof(uint16_t));
+    cksum = ntohs(cksum);
+
+    flags & 0x2 ? memcpy(syn_flag_str, "Yes", strlen("Yes") + 1) : memcpy(syn_flag_str, "No", strlen("No") + 1);
+    flags & 0x4 ? memcpy(rst_flag_str, "Yes", strlen("Yes") + 1) : memcpy(rst_flag_str, "No", strlen("No") + 1);
+    flags & 0x1 ? memcpy(fin_flag_str, "Yes", strlen("Yes") + 1) : memcpy(fin_flag_str, "No", strlen("No") + 1);
+    flags & 0x10 ? memcpy(ack_flag_str, "Yes", strlen("Yes") + 1) : memcpy(ack_flag_str, "No", strlen("No") + 1);
+
+    if (in_cksum((unsigned short *)data, seg_len) == 0) {
+        memcpy(cksum_str, "Correct", strlen("Correct") + 1);
+    } else {
+        memcpy(cksum_str, "Incorrect", strlen("Incorrect") + 1);
+    }
+
+    printf(
+        "\n\tTCP Header\n"
+        "\t\tSegment Len (bytes): %d\n"
+        "\t\tSource Port: %d\n"
+        "\t\tDest Port: %d\n"
+        "\t\tSequence Number: %u\n"
+        "\t\tACK Number: %u\n"
+        "\t\tSYN Flag: %s\n"
+        "\t\tRST Flag: %s\n"
+        "\t\tFIN Flag: %s\n"
+        "\t\tACK Flag: %s\n"
+        "\t\tWindow Size: %d\n"
+        "\t\tChecksum: %s (0x%04x)\n\n",
+        seg_len, src_port, dest_port, seq_num, ack_num, syn_flag_str, rst_flag_str, fin_flag_str, ack_flag_str, win_size, cksum_str, cksum
     );
 }

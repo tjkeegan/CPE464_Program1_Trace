@@ -18,7 +18,12 @@
 #define TARGET_OFFSET (SENDER_OFFSET + MAC_LENGTH + IP_LENGTH)
 #define ARP_TYPE 0x0806
 #define IPV4_TYPE 0x0800
+#define ICMP_TYPE 1
+#define TCP_TYPE 6
+#define UDP_TYPE 17
+#define PSEUDO_HDR_LENGTH 12
 
 void ethernet(const unsigned char *data);
 void arp(const unsigned char *data);
 void ip(const unsigned char *data);
+void tcp(const unsigned char *data);
