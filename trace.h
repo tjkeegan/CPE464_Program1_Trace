@@ -27,3 +27,5 @@ void ethernet(const unsigned char *data);
 void arp(const unsigned char *data);
 void ip(const unsigned char *data);
 void tcp(unsigned char *data);
+void icmp(const unsigned char *data);
+void udp(const unsigned char *data);

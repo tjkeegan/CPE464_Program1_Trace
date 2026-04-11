@@ -132,7 +132,7 @@ void arp(const unsigned char *data) {
         "\t\tSender MAC: %s\n"
         "\t\tSender IP: %s\n"
         "\t\tTarget MAC: %s\n"
-        "\t\tTarget IP: %s\n\n",
+        "\t\tTarget IP: %s\n",
         opcode_str, sender_mac_str, sender_ip_str, target_mac_str, target_ip_str
     );
 }
@@ -200,7 +200,7 @@ void ip(const unsigned char *data) {
     );
 
     if (protocol == ICMP_TYPE) {
-        //icmp(data + header_len);
+        icmp(data + header_len);
     }
     else if (protocol == TCP_TYPE) {
         uint16_t tcp_len = total_len - header_len;
@@ -216,7 +216,7 @@ void ip(const unsigned char *data) {
         tcp(pseudo_hdr);
     }
     else if (protocol == UDP_TYPE) {
-        //udp(data + header_len);
+        udp(data + header_len);
     }
 }
 
@@ -299,5 +299,65 @@ void tcp(unsigned char *data) {
         "\t\tWindow Size: %d\n"
         "\t\tChecksum: %s (0x%04x)\n",
         seg_len, src_port_str, dest_port_str, seq_num, ack_num, syn_flag_str, rst_flag_str, fin_flag_str, ack_flag_str, win_size, cksum_str, cksum
+    );
+}
+
+void icmp(const unsigned char *data) {
+
+    uint8_t type;
+
+    char type_str[strlen("Request") + 1];
+
+    memcpy(&type, data, 1);
+
+    if (type == 0) {
+        memcpy(type_str, "Reply", strlen("Reply") + 1);
+    }
+    else if (type == 8) {
+        memcpy(type_str, "Request", strlen("Request") + 1);
+    }
+    else {
+        snprintf(type_str, sizeof(type_str), "%u", type);
+    }
+
+    printf(
+        "\n\tICMP Header\n"
+        "\t\tType: %s\n",
+        type_str
+    );
+}
+
+void udp(const unsigned char *data) {
+
+    uint16_t src_port;
+    uint16_t dest_port;
+
+    char src_port_str[6];
+    char dest_port_str[6];
+    
+    memcpy(&src_port, data, sizeof(src_port));
+    src_port = ntohs(src_port);
+    memcpy(&dest_port, data + 2, sizeof(dest_port));
+    dest_port = ntohs(dest_port);
+
+    if (src_port == 53) {
+        memcpy(src_port_str, "DNS", sizeof("DNS"));
+    }
+    else {
+        snprintf(src_port_str, sizeof(src_port_str), "%u", src_port);
+    }
+    
+    if (dest_port == 53) {
+        memcpy(dest_port_str, "DNS", sizeof("DNS"));
+    }
+    else {
+        snprintf(dest_port_str, sizeof(dest_port_str), "%u", dest_port);
+    }
+
+    printf(
+        "\n\tUDP Header\n"
+        "\t\tSource Port:  %s\n"
+        "\t\tDest Port:  %s\n",
+        src_port_str, dest_port_str
     );
 }
