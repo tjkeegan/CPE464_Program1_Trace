@@ -13,7 +13,6 @@ Packet number: 1  Packet Len: 42
 		Target MAC: 0:0:0:0:0:0
 		Target IP: 192.168.1.1
 
-
 Packet number: 2  Packet Len: 60
 
 	Ethernet Header
@@ -27,7 +26,6 @@ Packet number: 2  Packet Len: 60
 		Sender IP: 192.168.1.1
 		Target MAC: 0:2:2d:90:75:89
 		Target IP: 192.168.1.102
-
 
 Packet number: 3  Packet Len: 42
 
@@ -43,7 +41,6 @@ Packet number: 3  Packet Len: 42
 		Target MAC: 0:0:0:0:0:0
 		Target IP: 192.168.1.4
 
-
 Packet number: 4  Packet Len: 42
 
 	Ethernet Header
@@ -57,7 +54,6 @@ Packet number: 4  Packet Len: 42
 		Sender IP: 192.168.1.102
 		Target MAC: 0:0:0:0:0:0
 		Target IP: 192.168.1.4
-
 
 Packet number: 5  Packet Len: 42
 
@@ -73,7 +69,6 @@ Packet number: 5  Packet Len: 42
 		Target MAC: 0:0:0:0:0:0
 		Target IP: 192.168.1.2
 
-
 Packet number: 6  Packet Len: 42
 
 	Ethernet Header
@@ -87,7 +82,6 @@ Packet number: 6  Packet Len: 42
 		Sender IP: 192.168.1.102
 		Target MAC: 0:0:0:0:0:0
 		Target IP: 192.168.1.2
-
 
 Packet number: 7  Packet Len: 42
 
@@ -103,7 +97,6 @@ Packet number: 7  Packet Len: 42
 		Target MAC: 0:0:0:0:0:0
 		Target IP: 192.168.1.6
 
-
 Packet number: 8  Packet Len: 60
 
 	Ethernet Header
@@ -117,7 +110,6 @@ Packet number: 8  Packet Len: 60
 		Sender IP: 192.168.1.104
 		Target MAC: 0:0:0:0:0:0
 		Target IP: 192.168.1.1
-
 
 Packet number: 9  Packet Len: 42
 
@@ -133,7 +125,6 @@ Packet number: 9  Packet Len: 42
 		Target MAC: 0:0:0:0:0:0
 		Target IP: 192.168.1.100
 
-
 Packet number: 10  Packet Len: 42
 
 	Ethernet Header
@@ -147,7 +138,6 @@ Packet number: 10  Packet Len: 42
 		Sender IP: 192.168.1.102
 		Target MAC: 0:0:0:0:0:0
 		Target IP: 192.168.1.101
-
 
 Packet number: 11  Packet Len: 42
 
@@ -163,7 +153,6 @@ Packet number: 11  Packet Len: 42
 		Target MAC: 0:0:0:0:0:0
 		Target IP: 192.168.1.1
 
-
 Packet number: 12  Packet Len: 60
 
 	Ethernet Header
@@ -177,7 +166,6 @@ Packet number: 12  Packet Len: 60
 		Sender IP: 192.168.1.1
 		Target MAC: 0:2:2d:90:75:89
 		Target IP: 192.168.1.102
-
 
 Packet number: 13  Packet Len: 42
 
@@ -193,7 +181,6 @@ Packet number: 13  Packet Len: 42
 		Target MAC: 0:0:0:0:0:0
 		Target IP: 192.168.1.103
 
-
 Packet number: 14  Packet Len: 60
 
 	Ethernet Header
@@ -207,7 +194,6 @@ Packet number: 14  Packet Len: 60
 		Sender IP: 192.168.1.103
 		Target MAC: 0:2:2d:90:75:89
 		Target IP: 192.168.1.102
-
 
 Packet number: 15  Packet Len: 42
 
@@ -223,7 +209,6 @@ Packet number: 15  Packet Len: 42
 		Target MAC: 0:0:0:0:0:0
 		Target IP: 192.168.1.104
 
-
 Packet number: 16  Packet Len: 60
 
 	Ethernet Header
@@ -237,4 +222,3 @@ Packet number: 16  Packet Len: 60
 		Sender IP: 192.168.1.104
 		Target MAC: 0:2:2d:90:75:89
 		Target IP: 192.168.1.102
-
