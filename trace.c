@@ -1,20 +1,20 @@
 #include "trace.h"
 
 int main(int argc, char *argv[]) {
-    // parse command line arguments
+    // check command line arguments
     if (argc == 4) {
         // check > value
         if (argv[3][0] != '>') {
-            perror("acceptable format:\n\ttrace 'tracefile.pcap'\n\ttrace 'tracefile.pcap' > 'outputfile.txt'");
+            printf("acceptable format:\n\ttrace 'tracefile.pcap'\n\ttrace 'tracefile.pcap' > 'outputfile.txt'\n");
             exit(1);
         }
     }
     else if (argc != 2) {
-        perror("acceptable format:\n\ttrace 'tracefile.pcap'\n\ttrace 'tracefile.pcap' > 'outputfile.txt'");
+        printf("acceptable format:\n\ttrace 'tracefile.pcap'\n\ttrace 'tracefile.pcap' > 'outputfile.txt'\n");
         exit(1);
     }
 
-    // open .pcap file using pcap_open_offline()
+    // open .pcap file
     char errbuf[PCAP_ERRBUF_SIZE];
     pcap_t *handle = pcap_open_offline(argv[1], errbuf);
     if (handle == NULL) {
@@ -22,7 +22,7 @@ int main(int argc, char *argv[]) {
         exit(1);
     }
 
-    // iterate over packets using pcap_next_ex()
+    // iterate over packets
     struct pcap_pkthdr *header;
     const unsigned char *data;
     int packet_count = 0;
@@ -32,6 +32,8 @@ int main(int argc, char *argv[]) {
         ethernet(data);
         pcap_ret = pcap_next_ex(handle, &header, &data);
     }
+
+    // check for error in pcap_next_ex() loop
     if (pcap_ret != PCAP_ERROR_BREAK) {
         perror("error reading .pcap file");
         exit(1);
@@ -43,30 +45,33 @@ int main(int argc, char *argv[]) {
 }
 
 void ethernet(const unsigned char *data) {
-    // parse dest MAC, src MAC, type
+    // define variables for dest MAC, source MAC, and type
     uint8_t dest_mac[MAC_LENGTH];
     uint8_t src_mac[MAC_LENGTH];
-    uint16_t type; // 2 bytes for type
+    uint16_t type;
 
     char dest_mac_str[MAC_STR_LENGTH];
     char src_mac_str[MAC_STR_LENGTH];
-    char type_str[8]; // enough to hold "Unknown" + null terminator
+    char type_str[ETHERNET_TYPE_STR_LENGTH];
 
+    // parse dest MAC, source MAC, and type from Ethernet header
     memcpy(dest_mac, data, MAC_LENGTH);
     memcpy(src_mac, data + MAC_LENGTH, MAC_LENGTH);   
-    memcpy(&type, data + 2 * MAC_LENGTH, 2);
-    type = ntohs(type); // convert from network byte order to host byte order
+    memcpy(&type, data + 2 * MAC_LENGTH, ETHERNET_TYPE_LENGTH);
+    type = ntohs(type); // network byte order -> host byte order
 
+    // write to strings for printing
     ether_ntoa_r((struct ether_addr *)dest_mac, dest_mac_str);
     ether_ntoa_r((struct ether_addr *)src_mac, src_mac_str);
+
     if (type == ARP_TYPE) {
-        memcpy(type_str, "ARP", 4);
+        memcpy(type_str, "ARP", sizeof("ARP"));
     }
     else if (type == IPV4_TYPE) {
-        memcpy(type_str, "IP", 3);
+        memcpy(type_str, "IP", sizeof("IP"));
     }
     else {
-        memcpy(type_str, "Unknown", 8);
+        memcpy(type_str, "Unknown", sizeof("Unknown"));
     }
 
     // print info
@@ -83,41 +88,42 @@ void ethernet(const unsigned char *data) {
         arp(data + ETHERNET_HEADER_LENGTH);
     }
     else if (type == IPV4_TYPE) {
-        // parse IPv4 header
         ip(data + ETHERNET_HEADER_LENGTH);
     }
     // skip unknown packet types
 }
 
 void arp(const unsigned char *data) {
-    // parse opcode, sender MAC, sender IP, targer MAC, target IP
-    uint16_t opcode; // 2 bytes for opcode
+    // define variables for opcode, sender MAC, sender IP, target MAC, and target IP
+    uint16_t opcode;
     uint8_t sender_mac[MAC_LENGTH];
     uint8_t sender_ip[IP_LENGTH];
     uint8_t target_mac[MAC_LENGTH];
     uint8_t target_ip[IP_LENGTH];
 
-    char opcode_str[8]; // enough to hold "Unknown" + null terminator
+    char opcode_str[OPCODE_STR_LENGTH];
     char sender_mac_str[MAC_STR_LENGTH];
     char sender_ip_str[IP_STR_LENGTH];
     char target_mac_str[MAC_STR_LENGTH];
     char target_ip_str[IP_STR_LENGTH];
 
-    memcpy(&opcode, data + OPCODE_OFFSET, 2);
-    opcode = ntohs(opcode); // convert from network byte order to host byte order
+    // parse fields from ARP header
+    memcpy(&opcode, data + OPCODE_OFFSET, OPCODE_LENGTH);
+    opcode = ntohs(opcode); // network byte order -> host byte order
     memcpy(sender_mac, data + SENDER_OFFSET, MAC_LENGTH);
     memcpy(sender_ip, data + SENDER_OFFSET + MAC_LENGTH, IP_LENGTH);
     memcpy(target_mac, data + TARGET_OFFSET, MAC_LENGTH);
     memcpy(target_ip, data + TARGET_OFFSET + MAC_LENGTH, IP_LENGTH);
 
+    // write to strings for printing
     if (opcode == 1) {
-        memcpy(opcode_str, "Request", 8);
+        memcpy(opcode_str, "Request", sizeof("Request"));
     }
     else if (opcode == 2) {
-        memcpy(opcode_str, "Reply", 6);
+        memcpy(opcode_str, "Reply", sizeof("Reply"));
     }
     else {
-        memcpy(opcode_str, "Unknown", 8);
+        memcpy(opcode_str, "Unknown", sizeof("Unknown"));
     }
     
     ether_ntoa_r((struct ether_addr *)sender_mac, sender_mac_str);
@@ -138,55 +144,70 @@ void arp(const unsigned char *data) {
 }
 
 void ip(const unsigned char *data) {
-    // parse IPv4 header
-    uint16_t total_len; // 2 bytes for total length
-    uint8_t version_ihl; // 1 byte for version and IHL
+    // define variables for total length, version/IHL, header length, TTL, protocol, checksum, sender IP, and dest IP
+    uint16_t total_len;
+    uint8_t version_ihl;
     uint8_t header_len; // for storing calculated header size
-    uint8_t ttl; // 1 byte for TTL
-    uint8_t protocol; // 1 byte for protocol
-    uint16_t cksum; // 2 bytes for checksum
+    uint8_t ttl;
+    uint8_t protocol; 
+    uint16_t cksum;
     uint8_t sender_ip[IP_LENGTH];
     uint8_t dest_ip[IP_LENGTH];
 
-    char protocol_str[strlen("Unknown") + 1];
-    char cksum_str[strlen("Incorrect") + 1];
+    char protocol_str[PROTOCOL_STR_LENGTH];
+    char cksum_str[CHECKSUM_STR_LENGTH];
     char sender_ip_str[IP_STR_LENGTH];
     char dest_ip_str[IP_STR_LENGTH];
 
-    memcpy(&total_len, data + 2, 2);
+    // parse fields from IP header
+    memcpy(&total_len, data + 2, TOTAL_LEN_LENGTH);
     total_len = ntohs(total_len);
-    memcpy(&version_ihl, data, 1);
-    header_len = (version_ihl & 0x0f) * 4;
-    memcpy(&ttl, data + 8, 1);
-    memcpy(&protocol, data + 9, 1);
-    memcpy(&cksum, data + 10, 2);
+    memcpy(&version_ihl, data, VERSION_IHL_LENGTH);
+    header_len = (version_ihl & 0x0f) * 4; // mask version_ihl to get IHL, then multiply by 4 to get header length in bytes
+    memcpy(&ttl, data + 8, TTL_LENGTH);
+    memcpy(&protocol, data + 9, PROTOCOL_LENGTH);
+    memcpy(&cksum, data + 10, CHECKSUM_LENGTH);
     cksum = ntohs(cksum);
     memcpy(sender_ip, data + 12, IP_LENGTH);
     memcpy(dest_ip, data + 16, IP_LENGTH);
 
-    if (protocol == ICMP_TYPE) {
-        memcpy(protocol_str, "ICMP", strlen("ICMP") + 1);
-    }
-    else if (protocol == TCP_TYPE) {
-        memcpy(protocol_str, "TCP", strlen("TCP") + 1);
-    }
-    else if (protocol == UDP_TYPE) {
-        memcpy(protocol_str, "UDP", strlen("UDP") + 1);
-    }
-    else {
-        memcpy(protocol_str, "Unknown", strlen("Unknown") + 1);
-    }
-
-    if (in_cksum((unsigned short *)data, header_len) == 0) {
-        memcpy(cksum_str, "Correct", strlen("Correct") + 1);
-    } else {
-        memcpy(cksum_str, "Incorrect", strlen("Incorrect") + 1);
-    }
- 
+    // write to strings for printing
+    ip_protocol_format(protocol, protocol_str);
+    ip_checksum((unsigned char *)data, header_len, cksum_str);
     inet_ntop(AF_INET, sender_ip, sender_ip_str, IP_STR_LENGTH);
     inet_ntop(AF_INET, dest_ip, dest_ip_str, IP_STR_LENGTH);
 
     // print info
+    ip_print(total_len, header_len, ttl, protocol_str, cksum_str, cksum, sender_ip_str, dest_ip_str);
+
+    // parse next header based on protocol
+    ip_next_header(data, total_len, header_len, protocol, sender_ip, dest_ip);
+}
+
+void ip_protocol_format(uint8_t protocol, char *protocol_str) {
+    if (protocol == ICMP_TYPE) {
+        memcpy(protocol_str, "ICMP", sizeof("ICMP"));
+    }
+    else if (protocol == TCP_TYPE) {
+        memcpy(protocol_str, "TCP", sizeof("TCP"));
+    }
+    else if (protocol == UDP_TYPE) {
+        memcpy(protocol_str, "UDP", sizeof("UDP"));
+    }
+    else {
+        memcpy(protocol_str, "Unknown", sizeof("Unknown"));
+    }
+}
+
+void ip_checksum(unsigned char *data, uint8_t header_len, char *cksum_str) {
+    if (in_cksum((unsigned short *)data, header_len) == 0) {
+        memcpy(cksum_str, "Correct", sizeof("Correct"));
+    } else {
+        memcpy(cksum_str, "Incorrect", sizeof("Incorrect"));
+    }
+}
+
+void ip_print(uint16_t total_len, uint8_t header_len, uint8_t ttl, char *protocol_str, char *cksum_str, uint16_t cksum, char *sender_ip_str, char *dest_ip_str) {
     printf(
         "\n\tIP Header\n"
         "\t\tIP PDU Len: %d\n"
@@ -198,7 +219,9 @@ void ip(const unsigned char *data) {
         "\t\tDest IP: %s\n",
         total_len, header_len, ttl, protocol_str, cksum_str, cksum, sender_ip_str, dest_ip_str
     );
+}
 
+void ip_next_header(const unsigned char *data, uint16_t total_len, uint8_t header_len, uint8_t protocol, uint8_t *sender_ip, uint8_t *dest_ip) {
     if (protocol == ICMP_TYPE) {
         icmp(data + header_len);
     }
@@ -255,36 +278,41 @@ void tcp(unsigned char *data) {
     memcpy(&cksum, data + PSEUDO_HDR_LENGTH + 16, sizeof(uint16_t));
     cksum = ntohs(cksum);
 
-    if (src_port == 80) {
-        memcpy(src_port_str, "HTTP", strlen("HTTP") + 1);
+    tcp_port_format(src_port, src_port_str, sizeof(src_port_str));
+    tcp_port_format(dest_port, dest_port_str, sizeof(dest_port_str));
+    tcp_flags(flags, syn_flag_str, rst_flag_str, fin_flag_str, ack_flag_str);
+    tcp_checksum(data, seg_len, cksum_str);
+    tcp_print(seg_len, src_port_str, dest_port_str, seq_num, ack_num, syn_flag_str, rst_flag_str, fin_flag_str, ack_flag_str, win_size, cksum_str, cksum);
+}
+
+void tcp_port_format(uint16_t port, char *port_str, size_t len) {
+    if (port == 80) {
+        memcpy(port_str, "HTTP", sizeof("HTTP"));
     }
-    else if (src_port == 443) {
-        memcpy(src_port_str, "HTTPS", strlen("HTTPS") + 1);
+    else if (port == 443) {
+        memcpy(port_str, "HTTPS", sizeof("HTTPS"));
     }
     else {
-        snprintf(src_port_str, sizeof(src_port_str), "%u", src_port);
+        snprintf(port_str, len, "%u", port);
     }
-    if (dest_port == 80) {
-        memcpy(dest_port_str, "HTTP", strlen("HTTP") + 1);
-    }
-    else if (dest_port == 443) {
-        memcpy(dest_port_str, "HTTPS", strlen("HTTPS") + 1);
-    }
-    else {
-        snprintf(dest_port_str, sizeof(dest_port_str), "%u", dest_port);
-    }
+}
 
-    flags & 0x2 ? memcpy(syn_flag_str, "Yes", strlen("Yes") + 1) : memcpy(syn_flag_str, "No", strlen("No") + 1);
-    flags & 0x4 ? memcpy(rst_flag_str, "Yes", strlen("Yes") + 1) : memcpy(rst_flag_str, "No", strlen("No") + 1);
-    flags & 0x1 ? memcpy(fin_flag_str, "Yes", strlen("Yes") + 1) : memcpy(fin_flag_str, "No", strlen("No") + 1);
-    flags & 0x10 ? memcpy(ack_flag_str, "Yes", strlen("Yes") + 1) : memcpy(ack_flag_str, "No", strlen("No") + 1);
+void tcp_flags(uint8_t flags, char *syn_flag_str, char *rst_flag_str, char *fin_flag_str, char *ack_flag_str) {
+    flags & 0x2 ? memcpy(syn_flag_str, "Yes", sizeof("Yes")) : memcpy(syn_flag_str, "No", sizeof("No"));
+    flags & 0x4 ? memcpy(rst_flag_str, "Yes", sizeof("Yes")) : memcpy(rst_flag_str, "No", sizeof("No"));
+    flags & 0x1 ? memcpy(fin_flag_str, "Yes", sizeof("Yes")) : memcpy(fin_flag_str, "No", sizeof("No"));
+    flags & 0x10 ? memcpy(ack_flag_str, "Yes", sizeof("Yes")) : memcpy(ack_flag_str, "No", sizeof("No"));
+}
 
+void tcp_checksum(unsigned char *data, uint16_t seg_len, char *cksum_str) {
     if (in_cksum((unsigned short *)data, PSEUDO_HDR_LENGTH + seg_len) == 0) {
-        memcpy(cksum_str, "Correct", strlen("Correct") + 1);
+        memcpy(cksum_str, "Correct", sizeof("Correct"));
     } else {
-        memcpy(cksum_str, "Incorrect", strlen("Incorrect") + 1);
+        memcpy(cksum_str, "Incorrect", sizeof("Incorrect"));
     }
+}
 
+void tcp_print(uint16_t seg_len, char *src_port_str, char *dest_port_str, uint32_t seq_num, uint32_t ack_num, char *syn_flag_str, char *rst_flag_str, char *fin_flag_str, char *ack_flag_str, uint16_t win_size, char *cksum_str, uint16_t cksum) {
     printf(
         "\n\tTCP Header\n"
         "\t\tSegment Length: %d\n"
